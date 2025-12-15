@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link"; // Menggunakan Link Next.js untuk performa lebih baik
 import { useAuth } from "@/context/auth-context";
 import { authAPI } from "@/lib/api/auth";
+import toast from "react-hot-toast"; // Import di file login
 import { Mail, Lock, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 
 // --- KOMPONEN LOGO GOOGLE ---
@@ -44,31 +45,31 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+
+    // Toast Loading (Akan muncul spinner)
+    const toastId = toast.loading("Sedang masuk...");
 
     try {
       const response = await authAPI.login(email, password);
-
-      // Ambil data user
       const { token, user } = response.data.data;
 
-      // Simpan ke context
       login(token, user);
 
+      // Toast Sukses (Menggantikan loading)
+      toast.success(`Selamat datang, ${user.name}!`, { id: toastId });
+
       if (user.role === "admin") {
-        router.push("/admin"); // Ke Dashboard Admin
+        router.push("/admin");
       } else {
-        router.push("/member"); // Ke Dashboard Member
+        router.push("/member");
       }
     } catch (err: any) {
       console.error(err);
-      // Perbaikan handling error agar lebih aman membaca object
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Invalid email or password";
-      setError(msg);
+      const msg = err.response?.data?.message || "Email atau password salah";
+
+      // Toast Error (Menggantikan loading)
+      toast.error(msg, { id: toastId });
     } finally {
       setLoading(false);
     }
