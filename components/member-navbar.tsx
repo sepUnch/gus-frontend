@@ -12,7 +12,7 @@ import {
   Medal,
   LogOut,
   User,
-  Settings, // Tambah icon Settings
+  Settings,
 } from "lucide-react";
 
 // --- KOMPONEN LOGO GOOGLE (SVG) ---
@@ -58,13 +58,11 @@ export const MemberNavbar = () => {
     { label: "Achievements", href: "/member/achievements", icon: Medal },
   ];
 
-  // Helper function untuk menampilkan Avatar atau Inisial
   const renderAvatar = () => {
     if (user?.avatar) {
-      // Logic URL sama seperti di halaman Profile
       const avatarUrl = user.avatar.startsWith('http') 
         ? user.avatar 
-        : `http://localhost:8080/${user.avatar}`; // Sesuaikan port backend kamu jika berbeda
+        : `http://localhost:8080/${user.avatar}`; 
       
       return (
         <img 
@@ -84,13 +82,17 @@ export const MemberNavbar = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        {/* LEFT: LOGO */}
+        
+        {/* --- LEFT: LOGO (PERBAIKAN DI SINI) --- */}
         <div className="flex items-center gap-3">
           <Link href="/member" className="flex items-center gap-2 group">
+            {/* Logo Icon */}
             <div className="bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm group-hover:shadow-md transition-all">
               <GoogleLogo className="w-6 h-6" />
             </div>
-            <div className="hidden sm:flex flex-col">
+            
+            {/* Logo Text - Hapus 'hidden sm:flex' agar selalu muncul */}
+            <div className="flex flex-col">
               <span className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent leading-none">
                 GDGOC
               </span>
@@ -100,6 +102,7 @@ export const MemberNavbar = () => {
             </div>
           </Link>
         </div>
+        {/* -------------------------------------- */}
 
         {/* CENTER: DESKTOP NAVIGATION */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-full border border-slate-200/50 dark:border-slate-700/50">
@@ -112,13 +115,13 @@ export const MemberNavbar = () => {
                 key={item.href}
                 href={item.href}
                 className={`
-                            flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
-                            ${
-                              isActive
-                                ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                            }
-                        `}
+                    flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                    }
+                `}
               >
                 <Icon size={16} />
                 {item.label}
@@ -158,7 +161,6 @@ export const MemberNavbar = () => {
                     </p>
                   </div>
                   
-                  {/* --- LINK BARU: PROFILE SETTINGS --- */}
                   <Link
                     href="/member/profile"
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors mb-1"
@@ -191,7 +193,7 @@ export const MemberNavbar = () => {
 
       {/* MOBILE MENU DROPDOWN */}
       {isOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 h-screen sm:h-auto">
           <div className="p-4 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
@@ -202,13 +204,13 @@ export const MemberNavbar = () => {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={`
-                                flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors
-                                ${
-                                  isActive
-                                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                }
-                            `}
+                        flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors
+                        ${
+                          isActive
+                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        }
+                    `}
                 >
                   <Icon size={18} />
                   {item.label}
@@ -217,14 +219,12 @@ export const MemberNavbar = () => {
             })}
 
             <div className="border-t border-slate-100 dark:border-slate-800 my-2 pt-2">
-              {/* --- LINK BARU: MOBILE PROFILE CLICK --- */}
               <Link 
                 href="/member/profile" 
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
-                   {/* Pakai renderAvatar kecil untuk mobile */}
+                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                    {user?.avatar ? (
                       <img 
                         src={user.avatar.startsWith('http') ? user.avatar : `http://localhost:8080/${user.avatar}`} 

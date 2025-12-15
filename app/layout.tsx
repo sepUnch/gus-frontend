@@ -10,8 +10,8 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "GDGOC Submission Portal",
-  description: "GDG Orange County Submission Portal",
-  generator: "v0.app",
+  description: "Google Developer Groups On Campus Esa Unggul",
+  generator: "wartech.app",
   icons: {
     icon: [
       {
