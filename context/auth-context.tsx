@@ -35,31 +35,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   const checkAuth = async (): Promise<User | null> => {
-    // Jangan set loading jika user sudah ada (biar smooth)
     if (!user) setIsLoading(true);
-
+    
     try {
-      // 1. Cek Token di LocalStorage
       const token = localStorage.getItem("token");
       if (!token) {
         setUser(null);
         setIsLoading(false);
         return null;
       }
-
-      // 2. Request ke Backend
-      // Header Authorization SUDAH OTOMATIS dipasang oleh interceptor di api-client.ts
-      // JADI KITA TIDAK PERLU SET MANUAL DISINI.
       
-      const response = await axiosInstance.get("/member/me");
+      // --- PERBAIKAN DI SINI ---
+      // GANTI "/member/me" MENJADI "/me"
+      // Endpoint /me biasanya hanya butuh login, tidak peduli role-nya apa.
+      const response = await axiosInstance.get("/me"); 
+      
       const userData = response.data.data;
-
       setUser(userData);
       return userData;
-    } catch (error: any) {
-      console.error("CheckAuth Failed:", error);
-      // Jika error 401, interceptor di api-client akan handle redirect/logout
-      // Kita cukup set state user ke null
+
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      // Jika token ditolak server, hapus localstorage agar bersih
+      localStorage.removeItem("token");
       setUser(null);
       return null;
     } finally {

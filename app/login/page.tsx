@@ -1,16 +1,20 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link" // Menggunakan Link Next.js untuk performa lebih baik
-import { useAuth } from "@/context/auth-context"
-import { authAPI } from "@/lib/api/auth"
-import { Mail, Lock, Loader2, AlertCircle, ArrowRight } from "lucide-react"
+import type React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link"; // Menggunakan Link Next.js untuk performa lebih baik
+import { useAuth } from "@/context/auth-context";
+import { authAPI } from "@/lib/api/auth";
+import { Mail, Lock, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 
 // --- KOMPONEN LOGO GOOGLE ---
 const GoogleLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+  <svg
+    viewBox="0 0 24 24"
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+  >
     <path
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
       fill="#4285F4"
@@ -31,48 +35,63 @@ const GoogleLogo = ({ className }: { className?: string }) => (
 );
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const { login } = useAuth()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const response = await authAPI.login(email, password)
-      const { token, user } = response.data.data 
-      login(token, user)
-      router.push("/member") 
+      const response = await authAPI.login(email, password);
+
+      // Ambil data user
+      const { token, user } = response.data.data;
+
+      // Simpan ke context
+      login(token, user);
+
+      if (user.role === "admin") {
+        router.push("/admin"); // Ke Dashboard Admin
+      } else {
+        router.push("/member"); // Ke Dashboard Member
+      }
     } catch (err: any) {
-      console.error(err)
-      setError(err.response?.data?.message || "Invalid email or password")
+      console.error(err);
+      // Perbaikan handling error agar lebih aman membaca object
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        "Invalid email or password";
+      setError(msg);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-3xl" />
-         <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-3xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-8">
-          
           {/* Header Section */}
           <div className="text-center mb-8 flex flex-col items-center">
             {/* --- PENGGANTIAN LOGO GEMBOK DENGAN GOOGLE --- */}
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm mb-4 p-2">
               <GoogleLogo className="w-full h-full" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome Back</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Welcome Back
+            </h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
               Sign in to access your GDGOC dashboard
             </p>
@@ -153,8 +172,8 @@ export default function LoginPage() {
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
             <p className="text-slate-500 dark:text-slate-400 text-sm">
               Don't have an account yet?{" "}
-              <Link 
-                href="/register" 
+              <Link
+                href="/register"
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-700 font-semibold transition-colors inline-flex items-center gap-1 group"
               >
                 Create an account
@@ -165,5 +184,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
