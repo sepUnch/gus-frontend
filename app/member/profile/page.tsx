@@ -15,15 +15,15 @@ import {
   AlertCircle,
   Camera, // Tambah icon Camera
 } from "lucide-react";
-import Image from "next/image"; // Import Image dari Next.js
+import Image from "next/image";
+import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const { user, checkAuth } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  
-  // 1. STATE UNTUK GAMBAR
+
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -31,7 +31,6 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
-  // ISI FORM DENGAN DATA USER SAAT INI
   useEffect(() => {
     if (user) {
       setName(user.name || "");
@@ -39,61 +38,70 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // 2. FUNGSI HANDLE GANTI FOTO
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setAvatarFile(file);
-      // Buat URL sementara agar user bisa lihat preview gambar yg dipilih
       setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
-  // 3. FUNGSI UPDATE KE BACKEND (PAKAI FORMDATA)
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setSuccess("");
+
+    // Hapus setError("") dan setSuccess("") karena sudah diganti Toast
+
+    // 1. Tampilkan Loading Toast (Spinner)
+    const toastId = toast.loading("Updating profile...");
 
     try {
       const formData = new FormData();
       formData.append("name", name);
       formData.append("email", email);
-      
+
       if (avatarFile) {
-        formData.append("avatar", avatarFile); 
+        formData.append("avatar", avatarFile);
       }
 
-      // --- PERBAIKAN: HAPUS CONFIG HEADER MANUAL ---
-      // Biarkan Axios yang mengatur Content-Type otomatis saat mendeteksi FormData
+      // Request ke Backend
       const response = await axiosInstance.put("/member/me", formData);
 
-      // 2. Cek apakah backend mengirim token baru? (Fitur Smart Update)
-      // Jika response backend menyertakan token baru, kita pakai itu.
+      // 2. Cek Token Baru (Smart Update)
+      // Jika user ganti email, biasanya backend kirim token baru
       if (response.data?.data?.token) {
-         // Gunakan fungsi login dari context untuk update token tanpa refresh
-         // Pastikan kamu import { useAuth } dan destructure { login } di atas
-         const { token, user } = response.data.data;
-         // Kita asumsikan fungsi login kamu sudah diupdate untuk menerima (token, user)
-         // Jika belum, update token manual di localStorage:
-         localStorage.setItem("token", token);
-         axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-         if (checkAuth) await checkAuth(); 
-      } else {
-         // Jika tidak ada token baru, refresh data user biasa
-         if (checkAuth) await checkAuth();
-      }
+        const { token } = response.data.data;
 
+        // Update token di LocalStorage & Axios
+        localStorage.setItem("token", token);
+        axiosInstance.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${token}`;
+
+        // Refresh Context Auth agar UI langsung berubah (Foto/Nama baru)
+        if (checkAuth) await checkAuth();
+
+        // 3. Toast Sukses (Update ID toast loading tadi)
+        toast.success("Profile updated! Token refreshed.", { id: toastId });
+      } else {
+        // Jika update biasa (tanpa ganti token)
+        if (checkAuth) await checkAuth();
+
+        // 3. Toast Sukses
+        toast.success("Profile updated successfully!", { id: toastId });
+      }
     } catch (err: any) {
       console.error("Update error:", err);
-      // Cek spesifik jika error 401
+
+      // Ambil pesan error dari backend
+      const msg = err.response?.data?.message || "Failed to update profile.";
+
+      // 4. Toast Error (Merah)
+      toast.error(msg, { id: toastId });
+
+      // Khusus jika sesi habis (401), mungkin perlu redirect manual atau biarkan auth-context yang handle
       if (err.response?.status === 401) {
-          setError("Session expired or email changed. Please login again.");
-          // Jangan set error state lain agar user tau kenapa dia logout
-      } else {
-          const msg = err.response?.data?.message || "Failed to update profile.";
-          setError(msg);
+        // Opsional: router.push("/login");
       }
     } finally {
       setLoading(false);
@@ -127,26 +135,28 @@ export default function ProfilePage() {
             <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600 relative"></div>
 
             <div className="px-8 pb-8 relative">
-              
               {/* 4. AVATAR UPLOAD SECTION */}
               <div className="relative -mt-16 mb-6 inline-block group">
                 <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-900 overflow-hidden bg-slate-200 dark:bg-slate-800 relative shadow-md">
-                  
                   {/* LOGIKA TAMPILAN GAMBAR: Preview -> Gambar User -> Inisial */}
                   {previewUrl ? (
-                     // Tampilkan Preview jika user baru pilih file
-                    <img 
-                      src={previewUrl} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover" 
+                    // Tampilkan Preview jika user baru pilih file
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
                     />
                   ) : user?.avatar ? (
-                     // Tampilkan Avatar dari Backend jika ada (pastikan URL lengkap)
-                     // Jika backend cuma kasih nama file, tambahkan base URL backend di depannya
-                    <img 
-                      src={user.avatar.startsWith('http') ? user.avatar : `http://localhost:8080/${user.avatar}`} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover" 
+                    // Tampilkan Avatar dari Backend jika ada (pastikan URL lengkap)
+                    // Jika backend cuma kasih nama file, tambahkan base URL backend di depannya
+                    <img
+                      src={
+                        user.avatar.startsWith("http")
+                          ? user.avatar
+                          : `http://localhost:8080/${user.avatar}`
+                      }
+                      alt="Profile"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     // Tampilkan Inisial jika belum ada foto
@@ -156,20 +166,20 @@ export default function ProfilePage() {
                   )}
 
                   {/* Overlay Hitam saat Hover (Klik untuk ganti) */}
-                  <label 
-                    htmlFor="avatar-upload" 
+                  <label
+                    htmlFor="avatar-upload"
                     className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   >
                     <Camera className="w-8 h-8 text-white" />
                   </label>
                 </div>
-                
+
                 {/* Input File Tersembunyi */}
-                <input 
-                  type="file" 
-                  id="avatar-upload" 
-                  accept="image/*" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  accept="image/*"
+                  className="hidden"
                   onChange={handleFileChange}
                 />
               </div>

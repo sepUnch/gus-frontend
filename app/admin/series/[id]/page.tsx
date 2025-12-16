@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import axiosInstance from "@/lib/api-client";
+import toast from "react-hot-toast"; // Pastikan install react-hot-toast
 
 export default function AdminSeriesDetailPage() {
   const { id } = useParams();
@@ -13,6 +14,7 @@ export default function AdminSeriesDetailPage() {
   const [series, setSeries] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -28,6 +30,7 @@ export default function AdminSeriesDetailPage() {
       setSeries(data);
     } catch (error) {
       console.error("Failed to fetch series:", error);
+      toast.error("Failed to load series details");
     }
   };
 
@@ -45,17 +48,37 @@ export default function AdminSeriesDetailPage() {
     }
   };
 
+  // --- LOGIC BARU: TOGGLE STATUS ---
+  const handleToggleStatus = async () => {
+    setToggleLoading(true);
+    try {
+      await axiosInstance.patch(`/admin/series/${id}/toggle`);
+      await fetchSeriesDetail(); // Refresh data untuk update UI
+      toast.success(
+        series.is_active
+          ? "Series closed successfully"
+          : "Series re-opened successfully"
+      );
+    } catch (error) {
+      console.error("Toggle error:", error);
+      toast.error("Failed to update series status");
+    } finally {
+      setToggleLoading(false);
+    }
+  };
+
   // Helper Variables
   const isExpired = series?.deadline
     ? new Date(series.deadline) < new Date()
     : false;
+  // Admin close override status
+  const isManuallyClosed = series && !series.is_active;
 
   return (
     <ProtectedRoute requiredRole="admin">
       <div className="flex min-h-screen bg-background">
         <AdminSidebar />
 
-        {/* MAIN CONTENT */}
         <main className="flex-1 md:ml-64 max-w-full overflow-x-hidden pt-15">
           <div className="container mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-8 max-w-7xl">
             {/* BACK BUTTON */}
@@ -91,25 +114,92 @@ export default function AdminSeriesDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* LEFT: TITLE & DESC */}
                   <div className="lg:col-span-2">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
                       <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                         {series.series_name}
                       </h1>
-                      {isExpired ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                          Ended
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                          Active
-                        </span>
-                      )}
+
+                      {/* STATUS BADGES */}
+                      <div className="flex gap-2">
+                        {isManuallyClosed ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                            CLOSED BY ADMIN
+                          </span>
+                        ) : isExpired ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                            EXPIRED
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200 animate-pulse">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
                     </div>
+
                     <p className="text-slate-600 dark:text-slate-400 text-lg mb-6 leading-relaxed">
                       {series.description || "No description provided."}
                     </p>
 
-                    {/* Detail Chips */}
+                    {/* ACTION BUTTONS */}
+                    <div className="flex flex-wrap gap-4 mb-6">
+                      {/* TOGGLE BUTTON */}
+                      <button
+                        onClick={handleToggleStatus}
+                        disabled={toggleLoading}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold text-white shadow-sm transition-all flex items-center gap-2 ${
+                          series.is_active
+                            ? "bg-red-500 hover:bg-red-600"
+                            : "bg-green-500 hover:bg-green-600"
+                        }`}
+                      >
+                        {toggleLoading ? (
+                          <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                        ) : series.is_active ? (
+                          <>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                              />
+                            </svg>
+                            Close Series
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            Re-open Series
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* DETAILS */}
                     <div className="flex flex-wrap gap-3">
                       <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 shadow-sm">
                         <svg
@@ -132,7 +222,13 @@ export default function AdminSeriesDetailPage() {
                           </span>
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 shadow-sm">
+                      <div
+                        className={`flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border rounded-lg text-sm shadow-sm ${
+                          isExpired
+                            ? "border-red-200 text-red-600"
+                            : "border-slate-200 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
                         <svg
                           className="w-4 h-4 text-orange-500"
                           fill="none"
@@ -160,7 +256,6 @@ export default function AdminSeriesDetailPage() {
 
                   {/* RIGHT: STATS CARDS */}
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Card 1: Submissions */}
                     <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center items-center text-center">
                       <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-2">
                         Total Submissions
@@ -170,7 +265,6 @@ export default function AdminSeriesDetailPage() {
                       </p>
                     </div>
 
-                    {/* Card 2: Verification Code */}
                     <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center items-center text-center overflow-hidden relative">
                       <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-2">
                         Verification Code
@@ -188,8 +282,11 @@ export default function AdminSeriesDetailPage() {
                   </div>
                 </div>
 
-                {/* SUBMISSION LIST SECTION */}
+                {/* SUBMISSION LIST SECTION (SAMA SEPERTI SEBELUMNYA) */}
                 <div className="mt-12">
+                  {/* ... (Tabel Submissions tetap sama, tidak perlu diubah) ... */}
+                  {/* Pastikan bagian mapping user.avatar yang sudah kita perbaiki sebelumnya tetap ada */}
+
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                       Student Submissions
@@ -211,7 +308,6 @@ export default function AdminSeriesDetailPage() {
 
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {submissions.map((sub: any) => {
-                              // Initials logic
                               const name = sub.user?.name || "Unknown";
                               const initials = name
                                 .split(" ")
@@ -219,8 +315,6 @@ export default function AdminSeriesDetailPage() {
                                 .join("")
                                 .slice(0, 2)
                                 .toUpperCase();
-
-                              // --- LOGIC AVATAR DI SINI ---
                               const avatarPath = sub.user?.avatar;
                               const avatarUrl = avatarPath
                                 ? avatarPath.startsWith("http")
@@ -233,10 +327,8 @@ export default function AdminSeriesDetailPage() {
                                   key={sub.id}
                                   className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                                 >
-                                  {/* Student Column */}
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                      {/* Avatar Container */}
                                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm overflow-hidden flex-shrink-0">
                                         {avatarUrl ? (
                                           <img
@@ -258,52 +350,29 @@ export default function AdminSeriesDetailPage() {
                                       </div>
                                     </div>
                                   </td>
-
-                                  {/* File Column */}
                                   <td className="px-6 py-4">
                                     <a
                                       href={sub.file_url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-blue-300 transition-all text-slate-600 dark:text-slate-300 text-xs font-medium max-w-[200px] truncate"
+                                      className="inline-flex items-center gap-2 text-blue-600 hover:underline"
                                     >
-                                      <svg
-                                        className="w-4 h-4 flex-shrink-0 text-blue-500"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                        />
-                                      </svg>
-                                      <span className="truncate">
-                                        {sub.file_url
-                                          ? "View Attachment"
-                                          : "No Attachment"}
+                                      <span className="truncate max-w-[150px]">
+                                        {sub.file_url}
                                       </span>
                                     </a>
                                   </td>
-
-                                  {/* Score Column */}
                                   <td className="px-6 py-4">
                                     {sub.score > 0 ? (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                      <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-full border border-green-200">
                                         Scored: {sub.score}
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
-                                        Pending Grading
+                                      <span className="text-yellow-600 font-bold text-xs bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">
+                                        Pending
                                       </span>
                                     )}
                                   </td>
-
-                                  {/* Action Column */}
                                   <td className="px-6 py-4 text-right">
                                     <button
                                       onClick={() =>
@@ -311,9 +380,9 @@ export default function AdminSeriesDetailPage() {
                                           `/admin/submissions/${sub.id}`
                                         )
                                       }
-                                      className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline decoration-2 underline-offset-4"
+                                      className="text-blue-600 hover:underline text-xs font-bold"
                                     >
-                                      Grade Submission
+                                      Grade
                                     </button>
                                   </td>
                                 </tr>
@@ -324,37 +393,15 @@ export default function AdminSeriesDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center">
-                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                          className="w-8 h-8 text-slate-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                        No Submissions Yet
-                      </h3>
-                      <p className="text-slate-600 dark:text-slate-400">
-                        Students haven't submitted anything for this series yet.
-                      </p>
+                    <div className="p-12 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                      No submissions yet.
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="text-center py-20">
-                <h2 className="text-2xl font-bold text-slate-400">
-                  Series not found
-                </h2>
+              <div className="text-center py-20 text-slate-400 font-bold text-2xl">
+                Series not found
               </div>
             )}
           </div>

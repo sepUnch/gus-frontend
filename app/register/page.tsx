@@ -15,6 +15,7 @@ import {
   ArrowRight, 
   UserPlus 
 } from "lucide-react"
+import toast from "react-hot-toast"
 
 export default function RegisterPage() {
   const [name, setName] = useState("")
@@ -36,18 +37,37 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
+    const toastId = toast.loading("Creating account...")
 
     try {
-      // Sesuaikan pemanggilan ini dengan struktur return API Anda
       const response = await authAPI.register(email, password, name)
-      // Asumsi response structure sama dengan login: response.data.data -> { token, user }
-      const { token, user } = response.data.data 
       
-      login(token, user)
-      router.push("/member")
+      // Cek struktur data balikan dari backend (untuk debugging)
+      console.log("Register Response:", response.data)
+
+      const responseData = response.data?.data || response.data
+
+      // SKENARIO 1: Backend Auto-Login (Ada Token)
+      if (responseData?.token) {
+        const { token, user } = responseData
+        login(token, user)
+        toast.success("Welcome! Account created.", { id: toastId })
+        router.push("/member")
+      } 
+      // SKENARIO 2: Backend Registrasi Saja (Tidak Ada Token)
+      else {
+        toast.success("Account created! Please login.", { id: toastId })
+        // Beri jeda sedikit agar user baca notif, lalu lempar ke Login
+        setTimeout(() => {
+            router.push("/login")
+        }, 1000)
+      }
+
     } catch (err: any) {
       console.error(err)
-      setError(err.response?.data?.message || "Registration failed. Please try again.")
+      const msg = err.response?.data?.message || "Registration failed. Please try again."
+      setError(msg)
+      toast.error(msg, { id: toastId })
     } finally {
       setLoading(false)
     }
@@ -71,7 +91,7 @@ export default function RegisterPage() {
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create Account</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
-              Join the GDG OC community today
+              Join the GDGOC community today
             </p>
           </div>
 

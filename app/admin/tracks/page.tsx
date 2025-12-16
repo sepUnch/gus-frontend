@@ -198,7 +198,7 @@ export default function ManageTracksPage() {
                   return (
                     <div
                       key={track.id}
-                      // onClick={() => router.push(`/admin/tracks/${track.id}`)}
+                      onClick={() => router.push(`/admin/tracks/${track.id}`)}
                       className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105 hover:-translate-y-1 relative overflow-hidden"
                     >
                       {/* Decorative gradient */}

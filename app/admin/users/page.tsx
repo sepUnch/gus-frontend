@@ -1,43 +1,41 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { adminAPI } from "@/lib/api/admin";
-import {
-  User,
-  Shield,
-  Loader2,
-  Save,
-  CheckCircle,
-  AlertCircle,
-  Users,
-} from "lucide-react";
+import { User, Shield, Loader2, Save } from "lucide-react";
+import toast from "react-hot-toast"; // 1. Import Toast
 
 export default function AdminUsersPage() {
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  // State error & success dihapus -> diganti Toast
 
   const handleUpdateRole = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
     setLoading(true);
+
+    // 2. Toast Loading
+    const toastId = toast.loading("Updating user role...");
 
     try {
       await adminAPI.updateUserRole(userId, role);
-      setSuccess("User role updated successfully!");
+
+      // 3. Toast Sukses
+      toast.success(`User ID ${userId} is now a ${role}!`, { id: toastId });
+
+      // Reset form
       setUserId("");
       setRole("member");
-
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccess(""), 5000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to update user role");
+      console.error("Update role error:", err);
+      const msg = err.response?.data?.message || "Failed to update user role";
+
+      // 4. Toast Error
+      toast.error(msg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -62,7 +60,7 @@ export default function AdminUsersPage() {
             </div>
 
             {/* FORM CARD */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 md:p-8 shadow-sm relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 md:p-8 shadow-sm relative overflow-hidden max-w-3xl">
               {/* Decorative Top Line */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"></div>
 
@@ -108,7 +106,7 @@ export default function AdminUsersPage() {
                     <select
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      className="w-full pl-12 pr-10 py-3 appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full pl-12 pr-10 py-3 appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
                     >
                       <option value="member">Member</option>
                       <option value="admin">Admin</option>
@@ -129,38 +127,21 @@ export default function AdminUsersPage() {
                       </svg>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1.5 ml-1">
-                    <b>Admin:</b> Full access to dashboard. <b>Member:</b>{" "}
-                    Standard user access.
+                  <p className="text-xs text-slate-500 mt-1.5 ml-1 flex items-center gap-1">
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                      Note:
+                    </span>
+                    Admin has full access to dashboard. Member has standard
+                    access.
                   </p>
                 </div>
-
-                {/* ERROR MESSAGE */}
-                {error && (
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2 fade-in duration-300">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                    <span className="text-sm text-red-800 dark:text-red-200">
-                      {error}
-                    </span>
-                  </div>
-                )}
-
-                {/* SUCCESS MESSAGE */}
-                {success && (
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2 fade-in duration-300">
-                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                    <span className="text-sm text-green-800 dark:text-green-200 font-medium">
-                      {success}
-                    </span>
-                  </div>
-                )}
 
                 {/* SUBMIT BUTTON */}
                 <div className="pt-2">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {loading ? (
                       <>

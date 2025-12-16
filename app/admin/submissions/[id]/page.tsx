@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import axiosInstance from "@/lib/api-client";
+import toast from "react-hot-toast"; // 1. Import Toast
 
 export default function AdminGradeSubmissionPage() {
   const { id } = useParams();
@@ -22,7 +23,6 @@ export default function AdminGradeSubmissionPage() {
   // UI States
   const [loading, setLoading] = useState(false); // For saving
   const [fetching, setFetching] = useState(true); // For initial load
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (id) fetchSubmissionDetail();
@@ -39,12 +39,12 @@ export default function AdminGradeSubmissionPage() {
       if (data) {
         setScore(data.score ? String(data.score) : "");
         setFeedback(data.feedback || "");
-        // Jika ada status di database, pakai itu. Jika tidak, default pending.
         setStatus(data.status || "pending");
       }
     } catch (err) {
       console.error("Error fetching submission:", err);
-      setError("Failed to load submission details");
+      // 2. Toast Error saat fetch gagal
+      toast.error("Failed to load submission details");
     } finally {
       setFetching(false);
     }
@@ -52,16 +52,18 @@ export default function AdminGradeSubmissionPage() {
 
   const handleGrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
-    // Basic Validation
+    // 3. Validasi dengan Toast
     const numericScore = parseInt(score);
     if (isNaN(numericScore) || numericScore < 0 || numericScore > 100) {
-      setError("Please enter a valid score between 0 and 100.");
+      toast.error("Please enter a valid score between 0 and 100.");
       setLoading(false);
       return;
     }
+
+    // 4. Mulai Loading Toast
+    const toastId = toast.loading("Saving grade...");
 
     try {
       await axiosInstance.post("/admin/submissions/grade", {
@@ -71,11 +73,18 @@ export default function AdminGradeSubmissionPage() {
         status,
       });
 
-      // Redirect back
-      router.push("/admin/submissions");
+      // 5. Sukses!
+      toast.success("Grade saved successfully!", { id: toastId });
+
+      // Redirect back with delay (opsional, biar notif kebaca)
+      setTimeout(() => {
+        router.push("/admin/submissions");
+      }, 1000);
     } catch (err: any) {
       console.error("Grading error:", err);
-      setError("Failed to save grade. Please try again.");
+      const msg = err.response?.data?.message || "Failed to save grade.";
+      // 6. Gagal!
+      toast.error(msg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -298,26 +307,6 @@ export default function AdminGradeSubmissionPage() {
                       />
                     </div>
 
-                    {/* Error Message */}
-                    {error && (
-                      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3 text-red-700 dark:text-red-300">
-                        <svg
-                          className="w-5 h-5 flex-shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <span className="text-sm font-medium">{error}</span>
-                      </div>
-                    )}
-
                     {/* Action Buttons */}
                     <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3">
                       <button
@@ -332,33 +321,7 @@ export default function AdminGradeSubmissionPage() {
                         disabled={loading}
                         className="w-full sm:w-1/2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
-                        {loading ? (
-                          <>
-                            <svg
-                              className="animate-spin h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Saving...
-                          </>
-                        ) : (
-                          "Save Grade"
-                        )}
+                        {loading ? "Saving..." : "Save Grade"}
                       </button>
                     </div>
                   </form>
