@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import axiosInstance from "@/lib/api-client";
+import { formatDistanceToNow } from "date-fns"; // Import date-fns
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -15,76 +16,99 @@ export default function AdminDashboard() {
     achievements: 0,
     users: 0,
   });
+  const [activities, setActivities] = useState<any[]>([]); // State untuk Activity
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardStats();
+    fetchDashboardData();
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
-      // 1. Fetch tracks and series (Masih menggunakan logika lama)
-      let totalTracks = 0;
-      let totalSeries = 0;
-      try {
-        const tracksResponse = await axiosInstance.get("/tracks");
-        const rawData = tracksResponse.data?.data || tracksResponse.data || [];
+      // Kita jalankan 2 request secara parallel:
+      // 1. Dashboard Data (Tracks, Series, Users, Recent Activity)
+      // 2. Achievements Stats (Endpoint terpisah)
+      const [dashboardRes, achievementsRes] = await Promise.allSettled([
+        axiosInstance.get("/admin/dashboard"),
+        axiosInstance.get("/admin/stats/achievements"),
+      ]);
 
-        if (Array.isArray(rawData)) {
-          totalTracks = rawData.length;
-          totalSeries = rawData.reduce((acc: number, track: any) => {
-            const seriesList = track.series || track.Series || [];
-            return acc + seriesList.length;
-          }, 0);
+      // --- PROCESS DASHBOARD DATA ---
+      let newStats = { tracks: 0, series: 0, users: 0, achievements: 0 };
+
+      if (dashboardRes.status === "fulfilled") {
+        const data = dashboardRes.value.data?.data || {};
+
+        // Update Stats dari endpoint dashboard
+        if (data.counts) {
+          newStats.tracks = data.counts.tracks || 0;
+          newStats.series = data.counts.series || 0;
+          newStats.users = data.counts.users || 0;
         }
-      } catch (error) {
-        console.error("Failed to load tracks:", error);
+
+        // Update Activity dari endpoint dashboard
+        if (Array.isArray(data.activities)) {
+          setActivities(data.activities);
+        }
       }
 
-      // ---------------------------------------------------------
-      // 2. FETCH REAL ACHIEVEMENTS (LOGIKA BARU - COUNT ONLY)
-      // ---------------------------------------------------------
-      let totalAchievements = 0;
-      try {
-        // Memanggil endpoint baru: /admin/stats/achievements
-        const achievementsResponse = await axiosInstance.get(
-          "/admin/stats/achievements"
-        );
-
-        // Backend Go mengirim format: { data: { count: 50 } }
-        const data =
-          achievementsResponse.data?.data || achievementsResponse.data;
-
-        // Ambil property 'count' dari object data
-        totalAchievements = data?.count || 0;
-      } catch (error) {
-        console.error("Failed to load achievements stats:", error);
-      }
-      // ---------------------------------------------------------
-
-      // 3. Fetch users (Logika Baru - Count Only)
-      let totalUsers = 0;
-      try {
-        const statsResponse = await axiosInstance.get("/admin/stats");
-        // Backend Go mengirim format: { data: { users: 123 } }
-        totalUsers = statsResponse.data?.data?.users || 0;
-      } catch (error) {
-        console.error("Failed to load user stats:", error);
+      // --- PROCESS ACHIEVEMENTS DATA ---
+      if (achievementsRes.status === "fulfilled") {
+        const achData =
+          achievementsRes.value.data?.data || achievementsRes.value.data;
+        newStats.achievements = achData?.count || 0;
       }
 
-      setStats({
-        tracks: totalTracks,
-        series: totalSeries,
-        achievements: totalAchievements,
-        users: totalUsers,
-      });
+      setStats(newStats);
     } catch (error) {
-      console.error("Failed to load dashboard stats:", error);
+      console.error("Failed to load dashboard data:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper untuk mendapatkan icon berdasarkan tipe activity
+  const getActivityIcon = (type: string, action: string) => {
+    // Icon Biru (Plus) untuk "New/Added"
+    if (action.includes("New") || action.includes("added")) {
+      return (
+        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+          <svg
+            className="w-5 h-5 text-blue-600 dark:text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            />
+          </svg>
+        </div>
+      );
+    }
+    // Icon Ungu (Edit/Pencil) untuk "Updated"
+    return (
+      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+        <svg
+          className="w-5 h-5 text-purple-500 dark:text-purple-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
+        </svg>
+      </div>
+    );
   };
 
   return (
@@ -110,7 +134,6 @@ export default function AdminDashboard() {
               <div className="group relative bg-gradient-to-br from-blue-300 to-blue-400 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
                 <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                 <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -147,7 +170,6 @@ export default function AdminDashboard() {
               <div className="group relative bg-gradient-to-br from-purple-300 to-purple-400 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
                 <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                 <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -180,11 +202,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Achievements Card - REAL DATA */}
+              {/* Achievements Card */}
               <div className="group relative bg-gradient-to-br from-amber-300 to-orange-400 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
                 <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                 <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -217,11 +238,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Users Card - REAL DATA */}
+              {/* Users Card */}
               <div className="group relative bg-gradient-to-br from-emerald-300 to-teal-400 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
                 <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                 <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -374,65 +394,49 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Activity Overview - Optional Section */}
+            {/* Recent Activity - DYNAMIC SECTION */}
             <div className="mt-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
                 Recent Activity
               </h2>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-blue-600 dark:text-blue-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900 dark:text-white">
-                      New track added
-                    </p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Web Development Basics
-                    </p>
-                  </div>
-                  <span className="text-xs text-slate-500">2h ago</span>
-                </div>
 
-                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-purple-500 dark:text-purple-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="text-center text-slate-500 py-4">
+                    Loading activity...
+                  </div>
+                ) : activities.length > 0 ? (
+                  activities.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-700/50"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
+                      {getActivityIcon(item.type, item.action)}
+
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 dark:text-white truncate">
+                          {item.action}
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                          {item.title}{" "}
+                          <span className="ml-2 px-1.5 py-0.5 text-[10px] uppercase bg-slate-200 dark:bg-slate-700 rounded text-slate-500">
+                            {item.type}
+                          </span>
+                        </p>
+                      </div>
+
+                      <span className="text-xs text-slate-500 whitespace-nowrap">
+                        {formatDistanceToNow(new Date(item.time), {
+                          addSuffix: true,
+                        }).replace("about ", "")}{" "}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-slate-500 py-8">
+                    No recent activity found.
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900 dark:text-white">
-                      Series updated
-                    </p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      React Fundamentals
-                    </p>
-                  </div>
-                  <span className="text-xs text-slate-500">5h ago</span>
-                </div>
+                )}
               </div>
             </div>
           </div>
