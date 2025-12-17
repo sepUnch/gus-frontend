@@ -214,13 +214,7 @@ export default function ManageSeriesPage() {
                     className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden flex flex-col h-full"
                   >
                     {/* Gradient Bar */}
-                    <div
-                      className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${
-                        series.is_active
-                          ? "from-indigo-500 via-purple-500 to-pink-500"
-                          : "from-slate-300 to-slate-400"
-                      }`}
-                    ></div>
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-purple-300 to-pink-300"></div>
 
                     {/* HEADER ROW: ID & STATUS */}
                     <div className="flex justify-between items-start mb-4 mt-1">

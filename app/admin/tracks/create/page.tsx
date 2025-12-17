@@ -20,7 +20,7 @@ export default function CreateTrackPage() {
     const toastId = toast.loading("Creating track...");
 
     try {
-      await axiosInstance.post("/tracks", {
+      await axiosInstance.post("/admin/tracks", {
         track_name: name,
         description: description,
       });
