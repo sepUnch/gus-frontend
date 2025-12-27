@@ -60,12 +60,9 @@ export function DiscussionSection({ seriesId }: { seriesId: number }) {
   const getAvatarUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `http://localhost:8000/${url}`;
+    return `http://localhost:8080/${url}`;
   };
-
   return (
-    // PERBAIKAN 1: Container SOLID (bg-slate-50). Tidak ada opacity/transparansi.
-    // Ini memberikan latar belakang abu-abu solid yang memisahkan diskusi dari konten utama.
     <div className="mt-6 bg-slate-50 dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-black dark:text-white flex items-center gap-2">
@@ -84,7 +81,6 @@ export function DiscussionSection({ seriesId }: { seriesId: number }) {
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Ask a question or share your thoughts..."
-            // PERBAIKAN 2: Input Putih Solid (bg-white). Border lebih tegas (border-slate-300).
             className="w-full pl-5 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate6600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm placeholder:text-slate-400"
           />
         </div>
